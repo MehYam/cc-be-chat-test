@@ -6,10 +6,12 @@
          <input type='submit' onclick='signIn(event)' value='sign in'/>
       </form>
       <div id='chatparent' style='display:none'>
+         Users:
          <div id='users'></div>
          <div>
             <input type='text' id='chattext' onkeydown='chatInput(event)'/>
          </div>
+         Chat:
          <div id='chat'>
          </div>
       </div>
@@ -22,28 +24,44 @@
       }
       function chatInput(event) {
          if (event.keyCode == 13) {
+            if (g_socket) {
+               g_socket.send(JSON.stringify({ chat: chattext.value }));
+            }
             chattext.value='';
          }
       }
       function getWebsocketURL() {
          return ((window.location.protocol === "https:") ? "wss://" : "ws://") + window.location.host;   
-      }      
+      }
+      var g_socket = null;
       function connect(name) {
-         var socket = new WebSocket(getWebsocketURL());
-         socket.onopen = event => { 
+         g_socket = new WebSocket(getWebsocketURL());
+         g_socket.onopen = event => { 
             console.log('open') 
             signin.style.display = 'none';
             chatparent.style.display = 'block';
+            chattext.focus();
 
-            socket.send(JSON.stringify({ user: name }));
+            g_socket.send(JSON.stringify({ name: name }));
          };
-         socket.onmessage = event => {
+         g_socket.onmessage = event => {
             console.log('onmessage', event.data);
+            const json = JSON.parse(event.data);
+            if (json.users) {
+               var userText = '';
+               json.users.forEach(user => { userText += user + '\n' });
+               users.innerText = userText;
+            }
+            if (json.chat) {
+               chat.innerText += '\n' + json.name + ': ' + json.chat;
+            }
          };
-         socket.onclose = event => {
+         g_socket.onclose = event => {
             console.log('onclose');
             signin.style.display = 'block';
             chatparent.style.display = 'none';
+
+            g_socket = null;
          }
       }
    </script>

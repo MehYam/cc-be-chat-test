@@ -17,15 +17,24 @@ class ConnectionManager {
       });
    }
 
-   onClientJoin(client) {
-      // send this client the userlist
-
-      // broadcast the join to everyone
+   onClientJoin(joinedClient) {
+      // send everyone the new user list - much less efficient than it could be
+      const userlist = { users: [] };
+      const clients = [...this.clients].filter(client => client.name !== null);
+      for (const client of clients) {
+         userlist.users.push(client.name);
+      }
+      for (const client of clients) {
+         client.send(userlist);
+      }
    }
    onClientChat(client, chat) {
-      const message = { chat };
+      const message = { 
+         name: client.name,
+         chat 
+      };
       for (const client of this.clients) {
-         client.send(JSON.stringify(message));
+         client.send(message);
       }
    }
    onClientLeave(client) {
@@ -54,19 +63,21 @@ class Client {
       const message = JSON.parse(event.data);
       if (message.name) {
          this.name = message.name;
-         this.manager.onClientJoin(client);
+         this.manager.onClientJoin(this);
       }
-      else if (message.chat) {
-         this.manager.onClientChat(message)
+      else if (message.chat && this.name) {
+         this.manager.onClientChat(this, message.chat)
       }
    }
    onerror(event) {
       console.error('Client error', event);
    }
    onclose(event) {
-      console.long('Client closed');
+      console.log('Client closed');
+      this.manager.onClientLeave(this);
    }
    send(payload) {
+      console.log('sending', payload);
       this.websocket.send(JSON.stringify(payload));
       ++this.sent;
    }
