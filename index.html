@@ -1,0 +1,51 @@
+<html>
+   <body>
+      <h1>Cloudcade Chat</h1>
+      <form id='signin'>
+         user name: <input autofocus type='text' id='username'><br/>
+         <input type='submit' onclick='signIn(event)' value='sign in'/>
+      </form>
+      <div id='chatparent' style='display:none'>
+         <div id='users'></div>
+         <div>
+            <input type='text' id='chattext' onkeydown='chatInput(event)'/>
+         </div>
+         <div id='chat'>
+         </div>
+      </div>
+   <script>
+      function signIn(e) {
+         e.preventDefault();
+         if (username.value.length) {
+            connect(username.value);
+         }
+      }
+      function chatInput(event) {
+         if (event.keyCode == 13) {
+            chattext.value='';
+         }
+      }
+      function getWebsocketURL() {
+         return ((window.location.protocol === "https:") ? "wss://" : "ws://") + window.location.host;   
+      }      
+      function connect(name) {
+         var socket = new WebSocket(getWebsocketURL());
+         socket.onopen = event => { 
+            console.log('open') 
+            signin.style.display = 'none';
+            chatparent.style.display = 'block';
+
+            socket.send(JSON.stringify({ user: name }));
+         };
+         socket.onmessage = event => {
+            console.log('onmessage', event.data);
+         };
+         socket.onclose = event => {
+            console.log('onclose');
+            signin.style.display = 'block';
+            chatparent.style.display = 'none';
+         }
+      }
+   </script>
+   </body>
+</html>
