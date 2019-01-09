@@ -7,7 +7,7 @@ let foulestRegexEver = null;
 try {
    // make a big regular expression out of the banned words.  
    const content = fs.readFileSync('list.txt', 'utf8');
-   words = content.split(/\s+/);
+   words = content.split(/\s*[\r\n]+\s*/g);
 
    foulestRegexEver = new RegExp(words.join('|'), 'gi');
 }
@@ -19,9 +19,12 @@ function makeHoly(unwashed) {
    var retval = unwashed;
 
    const matches = unwashed.match(foulestRegexEver);
-   for (const match of matches) {
-      const holy = '*'.repeat(match.length);
-      retval = retval.replace(match, holy);
+   debugger;
+   if (matches) {
+      for (const match of matches) {
+         const holy = '*'.repeat(match.length);
+         retval = retval.replace(match, holy);
+      }
    }
    return retval;
 }
