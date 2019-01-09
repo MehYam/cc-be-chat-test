@@ -2,9 +2,6 @@ const ws = require('ws');
 const { makeHoly } = require('./profanityFilter');
 const History = require('./history');
 
-const HISTORY_LIMIT = 5;
-const HISTORY_POPULAR_THRESHHOLD_SECONDS = 20;
-
 class ConnectionManager {
    constructor(httpServer) {
       console.log('creating websocket ConnectionManager');
@@ -12,8 +9,7 @@ class ConnectionManager {
       this.clients = new Set();
       this.nameToClient = {};  // reverse lookup to find clients by name
 
-      this.history = [];
-      this.history2 = new History();
+      this.history = new History();
 
       this.server = new ws.Server({ server: httpServer });
       this.server.on('listening', () => { console.log('ConnectionManager listening'); });
@@ -42,7 +38,7 @@ class ConnectionManager {
       }
 
       // send the new client the chat log
-      joinedClient.send({ history: this.history });
+      joinedClient.send({ history: this.history.log });
    }
    onClientChat(client, chat) {
       chat = makeHoly(chat);
@@ -55,13 +51,7 @@ class ConnectionManager {
          for (const client of this.clients) {
             client.send(message);
          }
-
-         this.history2.add(chat);
-
-         this.history.push(message);
-         if (this.history.length > HISTORY_LIMIT) {
-            this.history.shift();
-         }
+         this.history.add(message);
       }
    }
    onClientLeave(client) {
@@ -71,7 +61,7 @@ class ConnectionManager {
    handleSlashCommand(client, chat) {
       if (chat.indexOf('/popular') === 0) {
          // should really 'render' in a client
-         const popular = this.history2.popular;
+         const popular = this.history.popular;
          const render = popular ? '"' + popular.word + '" found ' + popular.hits + ' times' : 'no result';
          client.send({ slashResult: render});
          return true;
@@ -104,7 +94,6 @@ class Client {
    }
    onmessage(event) {
       ++this.received;
-      console.log('Client message', event.data);
 
       const message = JSON.parse(event.data);
       if (message.name) {
