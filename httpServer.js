@@ -1,3 +1,4 @@
+// Two roles:  serve our manual test html page, and provide a server to handle websocket upgrades
 const http = require('http');
 const fs = require('fs');
 

@@ -1,11 +1,11 @@
 const fs = require('fs');
 
-// if it's not possible to do this efficiently on the server, it could be pushed to the clients,
-// which makes more sense given that clients may want to opt out
+// if it's expensive doing this on the server, it easily could be pushed to the clients,
+// which may make more sense given that some clients will want to opt out of filtering anyway
 
 let foulestRegexEver = null;
 try {
-   // make a big regular expression out of the banned words.  
+   // make a giant regular expression out of the banned words.  No idea how efficient this is.
    const content = fs.readFileSync('list.txt', 'utf8');
    words = content.split(/\s*[\r\n]+\s*/g);
 

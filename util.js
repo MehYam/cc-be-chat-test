@@ -9,7 +9,6 @@ function formatElapsedTime(millis) {
    const hh = (seconds / 3600) % 24;
    const dd = (seconds / 86400);
 
-console.log(millis, ss, pad(ss));
    return pad(dd) + 'd ' + pad(hh) + 'h ' + pad(mm) + 'm ' + pad(ss) + 's';
 }
 

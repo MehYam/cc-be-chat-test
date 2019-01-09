@@ -4,7 +4,7 @@ const History = require('./history');
 const { makeHoly } = require('./profanityFilter');
 const { formatElapsedTime } = require('./util');
 
-// ChatManager is our monolithic class that handles the messaging system and chat protocol.
+// ChatManager is our monolithic class that handles websockets, the messaging system, and chat protocol.
 // See the README for thoughts on architecture, performance, and scaling.
 class ChatManager {
    constructor(httpServer) {
@@ -36,7 +36,8 @@ class ChatManager {
       //TODO - we're not handling and rejecting duplicate names properly
       this.nameToClient[joinedClient.name] = joinedClient;
 
-      // send everyone the new user list - much less efficient than it could be
+      // send everyone the new user list - much less efficient than it could be, we only
+      // need to send user list diffs, not the entire thing
       const userlist = { users: [] };
       const clients = [...this.clients].filter(client => client.name !== null);
       for (const client of clients) {
@@ -46,12 +47,14 @@ class ChatManager {
          client.send(userlist);
       }
 
-      // send the new client the chat log
+      // send the chat log to the new member
       joinedClient.send({ history: this.history.log });
    }
    onClientChat(client, chat) {
+      // profanity filter in advance of everything.  The clients could do this instead.
       chat = makeHoly(chat);
 
+      // slash commands are meta, and don't become part of the chat stream
       if (!this.handleSlashCommand(client, chat)) {
          const message = { 
             name: client.name,
@@ -67,9 +70,11 @@ class ChatManager {
       this.clients.delete(client);
       delete this.nameToClient[client.name];
    }
+   // returns 'true' if this is a supported slash command
+   // TODO: error back to the client any unsupported slash commands, instead they just go to chat
    handleSlashCommand(client, chat) {
       if (chat.indexOf('/popular') === 0) {
-         // should really 'render' in a client
+         // should really 'render' this in a client instead, just send them the data w/o the textual interpretation
          const popular = this.history.popular;
          const render = popular ? '"' + popular.word + '" found ' + popular.hits + ' times' : 'no result';
          client.send({ slashResult: render});
@@ -77,10 +82,10 @@ class ChatManager {
       }
       if (chat.indexOf('/stats') === 0) {
          const split = chat.split(/\s+/);
-         const statsClient = split.length >= 2 && this.nameToClient[split[1]];
-         if (statsClient) {
-            const elapsed = Date.now() - statsClient.loggedInSince;
-            client.send({ slashResult: 'user logged in for ' + formatElapsedTime(elapsed)});
+         const targetClient = split.length >= 2 && this.nameToClient[split[1]];
+         if (targetClient) {
+            const elapsed = Date.now() - targetClient.loggedInSince;
+            client.send({ slashResult: 'user logged in for ' + formatElapsedTime(elapsed) + ', activity: ' + targetClient.received});
          }
          else {
             client.send({ slashResult: 'user not found'});
@@ -91,6 +96,7 @@ class ChatManager {
    }
 }
 
+// Client is just here to wrap a websocket with data pertaining to this user (name, stats, etc).
 class Client {
    constructor(manager, websocket) {
       this.manager = manager;

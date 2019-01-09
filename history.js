@@ -1,7 +1,8 @@
 
-const LOG_LIMIT = 5;
+const LOG_LIMIT = 50;
 const POPULAR_THRESHHOLD_MS = 5 * 1000;
 
+// History implements the chat log and /popular command
 class History {
    constructor() {
       // TODO: we should trim this as chats come in by MAX(log limit, /popular threshhold), 
