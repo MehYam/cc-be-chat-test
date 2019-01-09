@@ -19,7 +19,6 @@ function makeHoly(unwashed) {
    var retval = unwashed;
 
    const matches = unwashed.match(foulestRegexEver);
-   debugger;
    if (matches) {
       for (const match of matches) {
          const holy = '*'.repeat(match.length);

@@ -1,14 +1,19 @@
 const ws = require('ws');
 const { makeHoly } = require('./profanityFilter');
+const History = require('./history');
 
 const HISTORY_LIMIT = 5;
+const HISTORY_POPULAR_THRESHHOLD_SECONDS = 20;
 
 class ConnectionManager {
    constructor(httpServer) {
       console.log('creating websocket ConnectionManager');
 
       this.clients = new Set();
+      this.nameToClient = {};  // reverse lookup to find clients by name
+
       this.history = [];
+      this.history2 = new History();
 
       this.server = new ws.Server({ server: httpServer });
       this.server.on('listening', () => { console.log('ConnectionManager listening'); });
@@ -22,6 +27,10 @@ class ConnectionManager {
    }
 
    onClientJoin(joinedClient) {
+      //KAI: assert and test the integrity of this
+      //KAI: issue - we're not handling and rejecting duplicate names properly
+      this.nameToClient[joinedClient.name] = joinedClient;
+
       // send everyone the new user list - much less efficient than it could be
       const userlist = { users: [] };
       const clients = [...this.clients].filter(client => client.name !== null);
@@ -37,21 +46,45 @@ class ConnectionManager {
    }
    onClientChat(client, chat) {
       chat = makeHoly(chat);
-      const message = { 
-         name: client.name,
-         chat 
-      };
-      for (const client of this.clients) {
-         client.send(message);
-      }
 
-      this.history.push(message);
-      if (this.history.length > HISTORY_LIMIT) {
-         this.history.shift();
+      if (!this.handleSlashCommand(client, chat)) {
+         const message = { 
+            name: client.name,
+            chat 
+         };
+         for (const client of this.clients) {
+            client.send(message);
+         }
+
+         this.history2.add(chat);
+
+         this.history.push(message);
+         if (this.history.length > HISTORY_LIMIT) {
+            this.history.shift();
+         }
       }
    }
    onClientLeave(client) {
       this.clients.delete(client);
+      delete this.nameToClient[client.name];
+   }
+   handleSlashCommand(client, chat) {
+      if (chat.indexOf('/popular') === 0) {
+         // should really 'render' in a client
+         const popular = this.history2.popular;
+         const render = popular ? '"' + popular.word + '" found ' + popular.hits + ' times' : 'no result';
+         client.send({ slashResult: render});
+         return true;
+      }
+      if (chat.indexOf('/stats') === 0) {
+         const split = chat.split(/\s+/);
+         if (split.length >= 2 && this.nameToClient[split[1]]) {
+            client.send({ slashResult: 'user found'});
+         }
+         client.send({ slashResult: 'user not found'});
+         return false;
+      }
+      return false;
    }
 }
 
@@ -76,6 +109,7 @@ class Client {
       const message = JSON.parse(event.data);
       if (message.name) {
          this.name = message.name;
+         this.loggedInSince = Date.now;
          this.manager.onClientJoin(this);
       }
       else if (message.chat && this.name) {
