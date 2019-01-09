@@ -1,10 +1,13 @@
 const ws = require('ws');
 
+const HISTORY_LIMIT = 5;
+
 class ConnectionManager {
    constructor(httpServer) {
       console.log('creating websocket ConnectionManager');
 
       this.clients = new Set();
+      this.history = [];
 
       this.server = new ws.Server({ server: httpServer });
       this.server.on('listening', () => { console.log('ConnectionManager listening'); });
@@ -27,6 +30,9 @@ class ConnectionManager {
       for (const client of clients) {
          client.send(userlist);
       }
+
+      // send the new client the chat log
+      joinedClient.send({ history: this.history });
    }
    onClientChat(client, chat) {
       const message = { 
@@ -35,6 +41,11 @@ class ConnectionManager {
       };
       for (const client of this.clients) {
          client.send(message);
+      }
+
+      this.history.push(message);
+      if (this.history.length > HISTORY_LIMIT) {
+         this.history.shift();
       }
    }
    onClientLeave(client) {

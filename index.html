@@ -44,6 +44,9 @@
 
             g_socket.send(JSON.stringify({ name: name }));
          };
+         function handleChat(json) {
+            chat.innerText += '\n' + json.name + ': ' + json.chat;
+         }
          g_socket.onmessage = event => {
             console.log('onmessage', event.data);
             const json = JSON.parse(event.data);
@@ -53,7 +56,10 @@
                users.innerText = userText;
             }
             if (json.chat) {
-               chat.innerText += '\n' + json.name + ': ' + json.chat;
+               handleChat(json);
+            }
+            if (json.history) {
+               json.history.forEach(handleChat)
             }
          };
          g_socket.onclose = event => {
