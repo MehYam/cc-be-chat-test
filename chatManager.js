@@ -4,29 +4,36 @@ const History = require('./history');
 const { makeHoly } = require('./profanityFilter');
 const { formatElapsedTime } = require('./util');
 
-class ConnectionManager {
+// ChatManager is our monolithic class that handles the messaging system and chat protocol.
+// See the README for thoughts on architecture, performance, and scaling.
+class ChatManager {
    constructor(httpServer) {
-      console.log('creating websocket ConnectionManager');
+      console.log('creating websocket ChatManager');
 
+      // one Client instance for each websocket connection.  Not completely necessary as
+      // ws provides a similar object, but we need somewhere to store connection-specific
+      // things (user name, stats, etc)
       this.clients = new Set();
-      this.nameToClient = {};  // reverse lookup to find clients by name
 
+      // reverse lookup to find clients by name, after they've signed in
+      this.nameToClient = {};  
+
+      // stores previous chats, implements /popular and 
       this.history = new History();
 
       this.server = new ws.Server({ server: httpServer });
-      this.server.on('listening', () => { console.log('ConnectionManager listening'); });
+      this.server.on('listening', () => { console.log('ChatManager listening'); });
       this.server.on('connection', (ws, req) => {
          const client = new Client(this, ws);
          this.clients.add(client);
       });
       this.server.on('error', error => {
-         console.error('ConnectionManager error', error);
+         console.error('ChatManager error', error);
       });
    }
 
    onClientJoin(joinedClient) {
-      //KAI: assert and test the integrity of this
-      //KAI: issue - we're not handling and rejecting duplicate names properly
+      //TODO - we're not handling and rejecting duplicate names properly
       this.nameToClient[joinedClient.name] = joinedClient;
 
       // send everyone the new user list - much less efficient than it could be
@@ -125,4 +132,4 @@ class Client {
    }
 }
 
-module.exports = ConnectionManager;
+module.exports = ChatManager;

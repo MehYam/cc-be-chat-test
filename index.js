@@ -1,4 +1,6 @@
 const httpServer = require('./httpServer');
-const ConnectionManager = require('./connectionManager.js');
+const ChatManager = require('./chatManager');
 
-const cm = new ConnectionManager(httpServer);
+// ChatManager handles websocket connections and implements our chat protocol.
+// See README for extra details.
+const instance = new ChatManager(httpServer);

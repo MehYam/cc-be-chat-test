@@ -1,9 +1,11 @@
 
-const LOG_LIMIT = 50;
+const LOG_LIMIT = 5;
 const POPULAR_THRESHHOLD_MS = 5 * 1000;
 
 class History {
    constructor() {
+      // TODO: we should trim this as chats come in by MAX(log limit, /popular threshhold), 
+      // it just grows endlessly for now.
       this.msgs = [];
    }
    add(msg) {
@@ -11,7 +13,9 @@ class History {
    }
    get log() {
       // return the last LOG_LIMIT messages
-      return this.msgs.splice(0, LOG_LIMIT);
+      const num = Math.min(LOG_LIMIT, this.msgs.length);
+      const start = this.msgs.length - num;
+      return this.msgs.slice(start, start + num);
    }
    get popular() {
       // loop all chats within the time threshhold, count the words
