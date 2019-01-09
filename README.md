@@ -8,7 +8,7 @@ This app employs a monolithic design where most of the heavy lifting is provided
 
 ## Performance and Scaling
 
-Actual profiling and manual testing are the best ways to get answers about performance bottlenecks (this always reveals surprises, either in perf problems you didn't anticipate, or perf problems you expected but never materialized), but it's possible to guess a few things beforehand about how things should scale.
+Actual profiling and manual testing are the best ways to get answers about performance bottlenecks (this always reveals surprises, either in perf problems you didn't anticipate, or perf problems you expected but never materialized), but it's possible to guess a few things beforehand about how things should scale:
 
 Performance can be separated into two broad focus areas: 1) efficiency of design, where we consider the dependencies and bottlenecks of individual components, and how they affect the performance of the system as a whole, and, 2) efficiency in the small, where we focus on spot issues like the memory footprint of History, websocket connections and messaging load, regex costs, etc.
 
@@ -17,6 +17,8 @@ Firstly, design:  when trying to scale up ChatManager to its limit, some compone
 Secondly, performance in the small:  profiling is the key to identifying bottlenecks here, but there are a few intuitive perf problems to think about.  History currently leaks memory, as it logs everything and never purges, but it's a simple fix to limit its length to something reasonable and purge either as new messages come in, or on some kind of timer.  It may actually be more performant to purge less often, as the gc incurs extra overhead in pruning regularly as arrays need to be realloc'ed.  
 
 The profanity filter uses a giant regex.  Hard to say how this performs under load (it may be not a problem at all), but one simple solution is to do all the filtering in the client.  If it had to be done on the server, it's 100% certain that there's a way to do it more efficiently, right down to writing a native plugin that's tuned to do it quickly and efficiently.  My guess is that there are mature libraries that already do this.
+
+If bandwidth becomes a concern, there are a few places where the protocol can be improved.  It should already be gzip'ed as part of the http layer, but to go further we could think about improving the protocol format.  At the extreme end, something like protobuf or bson could be employed to do a better job packing the bytes.  Also worth looking at is minimizing the protocol usage (i.e. we're currently sending superfluous whole user lists instead of just deltas).
 
 There are a few other places where we allocate temporary strings and arrays (.split(), etc), but each of these could be profiled and refined individually as needed.
 
