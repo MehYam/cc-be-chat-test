@@ -1,6 +1,8 @@
 const ws = require('ws');
-const { makeHoly } = require('./profanityFilter');
+
 const History = require('./history');
+const { makeHoly } = require('./profanityFilter');
+const { formatElapsedTime } = require('./util');
 
 class ConnectionManager {
    constructor(httpServer) {
@@ -68,11 +70,15 @@ class ConnectionManager {
       }
       if (chat.indexOf('/stats') === 0) {
          const split = chat.split(/\s+/);
-         if (split.length >= 2 && this.nameToClient[split[1]]) {
-            client.send({ slashResult: 'user found'});
+         const statsClient = split.length >= 2 && this.nameToClient[split[1]];
+         if (statsClient) {
+            const elapsed = Date.now() - statsClient.loggedInSince;
+            client.send({ slashResult: 'user logged in for ' + formatElapsedTime(elapsed)});
          }
-         client.send({ slashResult: 'user not found'});
-         return false;
+         else {
+            client.send({ slashResult: 'user not found'});
+         }
+         return true;
       }
       return false;
    }
@@ -98,7 +104,7 @@ class Client {
       const message = JSON.parse(event.data);
       if (message.name) {
          this.name = message.name;
-         this.loggedInSince = Date.now;
+         this.loggedInSince = Date.now();
          this.manager.onClientJoin(this);
       }
       else if (message.chat && this.name) {
