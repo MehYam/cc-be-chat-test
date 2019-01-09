@@ -1,4 +1,5 @@
 const ws = require('ws');
+const { makeHoly } = require('./profanityFilter');
 
 const HISTORY_LIMIT = 5;
 
@@ -35,6 +36,7 @@ class ConnectionManager {
       joinedClient.send({ history: this.history });
    }
    onClientChat(client, chat) {
+      chat = makeHoly(chat);
       const message = { 
          name: client.name,
          chat 
